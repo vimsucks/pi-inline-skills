@@ -50,7 +50,7 @@ export default function piInlineSkills(pi: ExtensionAPI) {
     const currentEditorFactory = ctx.ui.getEditorComponent();
     if (!isInlineAutocompleteEditorFactory(currentEditorFactory)) {
       ctx.ui.setEditorComponent(
-        createInlineAutocompleteEditorFactory(currentEditorFactory, () => listSkills(pi.getCommands())),
+        createInlineAutocompleteEditorFactory(currentEditorFactory),
       );
     }
 
@@ -60,7 +60,7 @@ export default function piInlineSkills(pi: ExtensionAPI) {
       async getSuggestions(lines, line, col, options) {
         const skills = listSkills(pi.getCommands());
         const beforeCursor = (lines[line] ?? "").slice(0, col);
-        const completion = findInlineSkillCompletion(beforeCursor, skills);
+        const completion = findInlineSkillCompletion(beforeCursor);
 
         if (!completion) {
           return current.getSuggestions(lines, line, col, options);
@@ -69,21 +69,37 @@ export default function piInlineSkills(pi: ExtensionAPI) {
         const items = skills
           .filter((skill) => skill.name.startsWith(completion.fragment))
           .map((skill) => ({
-            value: `/${skill.name}`,
+            value: skill.name,
             label: `/${skill.name}`,
             description: skill.description || "Pi skill",
           }));
 
-        return items.length > 0
-          ? { prefix: completion.prefix, items }
-          : current.getSuggestions(lines, line, col, options);
+        return items.length > 0 ? { prefix: completion.fragment, items } : null;
       },
 
       applyCompletion(lines, line, col, item, prefix) {
-        return current.applyCompletion(lines, line, col, item, prefix);
+        const currentLine = lines[line] ?? "";
+        const completion = findInlineSkillCompletion(currentLine.slice(0, col));
+        const isSkill = listSkills(pi.getCommands()).some((skill) => item.value === skill.name);
+
+        if (!completion || completion.fragment !== prefix || !isSkill) {
+          return current.applyCompletion(lines, line, col, item, prefix);
+        }
+
+        const nextLines = [...lines];
+        const replacementStart = col - prefix.length;
+        const suffix = currentLine.slice(col);
+        const trailingSpace = /^\s/.test(suffix) ? "" : " ";
+        const replacement = `${item.value}${trailingSpace}`;
+        nextLines[line] = currentLine.slice(0, replacementStart) + replacement + suffix;
+        return { lines: nextLines, cursorLine: line, cursorCol: replacementStart + replacement.length };
       },
 
       shouldTriggerFileCompletion(lines, line, col) {
+        const beforeCursor = (lines[line] ?? "").slice(0, col);
+        // Let Tab reach this provider; getSuggestions returns null rather than files
+        // when an inline token has no matching skill.
+        if (findInlineSkillCompletion(beforeCursor)) return true;
         return current.shouldTriggerFileCompletion?.(lines, line, col) ?? true;
       },
     }));

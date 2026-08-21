@@ -22,7 +22,7 @@ let editorFactory: InlineEditorFactory | undefined;
 
 const baseAutocompleteProvider: AutocompleteProvider = {
   async getSuggestions() {
-    return null;
+    return { prefix: "/", items: [{ value: "/tmp/file", label: "/tmp/file" }] };
   },
   applyCompletion(lines, cursorLine, cursorCol) {
     return { lines, cursorLine, cursorCol };
@@ -102,8 +102,67 @@ describe("extension event wiring", () => {
       signal: AbortSignal.timeout(1_000),
     });
 
-    assert.deepEqual(suggestions?.items.map((item) => item.value), ["/code-review"]);
+    assert.deepEqual(suggestions?.items.map((item) => item.label), ["/code-review"]);
+    assert.deepEqual(suggestions?.items.map((item) => item.value), ["code-review"]);
+    assert.equal(suggestions?.prefix, "");
     assert.equal(autocompleteProvider.shouldTriggerFileCompletion?.([line], 0, line.length), true);
+
+    const completed = autocompleteProvider.applyCompletion(
+      ["\u4ecb\u7ecd\u4e00\u4e0b /code-"],
+      0,
+      "\u4ecb\u7ecd\u4e00\u4e0b /code-".length,
+      suggestions!.items[0],
+      "code-",
+    );
+    assert.deepEqual(completed, {
+      lines: ["\u4ecb\u7ecd\u4e00\u4e0b /code-review "],
+      cursorLine: 0,
+      cursorCol: "\u4ecb\u7ecd\u4e00\u4e0b /code-review ".length,
+    });
+
+    const completedFromBareSlash = autocompleteProvider.applyCompletion(
+      [line],
+      0,
+      line.length,
+      suggestions!.items[0],
+      "",
+    );
+    assert.deepEqual(completedFromBareSlash, {
+      lines: ["\u4ecb\u7ecd\u4e00\u4e0b /code-review "],
+      cursorLine: 0,
+      cursorCol: "\u4ecb\u7ecd\u4e00\u4e0b /code-review ".length,
+    });
+  });
+
+  it("preserves suffix text without adding a second space", () => {
+    assert.ok(autocompleteProvider);
+    const line = "Use /code- for this";
+    const cursorCol = "Use /code-".length;
+
+    const completed = autocompleteProvider.applyCompletion(
+      [line],
+      0,
+      cursorCol,
+      { value: "code-review", label: "/code-review" },
+      "code-",
+    );
+
+    assert.deepEqual(completed, {
+      lines: ["Use /code-review for this"],
+      cursorLine: 0,
+      cursorCol: "Use /code-review".length,
+    });
+  });
+
+  it("does not fall back to file suggestions for an inline skill token", async () => {
+    assert.ok(autocompleteProvider);
+    const line = "Use /missing";
+
+    const suggestions = await autocompleteProvider.getSuggestions([line], 0, line.length, {
+      signal: AbortSignal.timeout(1_000),
+    });
+
+    assert.equal(suggestions, null);
   });
 
   it("preserves input and injects a full custom message before an idle run", async () => {

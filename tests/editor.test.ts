@@ -47,20 +47,27 @@ function createEditor(initialText: string) {
 }
 
 describe("wrapInlineAutocompleteEditor", () => {
-  const skills = [{ name: "code-review" }];
-
   it("requests suggestions after an inline slash is entered", () => {
     const harness = createEditor("\u4ecb\u7ecd\u4e00\u4e0b ");
-    const editor = wrapInlineAutocompleteEditor(harness.editor, () => skills);
+    const editor = wrapInlineAutocompleteEditor(harness.editor);
 
     editor.handleInput("/");
 
     assert.equal(harness.getTriggerCount(), 1);
   });
 
+  it("does not request suggestions without preceding whitespace", () => {
+    const harness = createEditor("\u4ecb\u7ecd\u4e00\u4e0b");
+    const editor = wrapInlineAutocompleteEditor(harness.editor);
+
+    editor.handleInput("/");
+
+    assert.equal(harness.getTriggerCount(), 0);
+  });
+
   it("does not request inline suggestions at the leading command position", () => {
     const harness = createEditor("");
-    const editor = wrapInlineAutocompleteEditor(harness.editor, () => skills);
+    const editor = wrapInlineAutocompleteEditor(harness.editor);
 
     editor.handleInput("/");
 
@@ -70,7 +77,7 @@ describe("wrapInlineAutocompleteEditor", () => {
   it("lets an open suggestion list handle subsequent characters", () => {
     const harness = createEditor("Use /");
     harness.setShowingAutocomplete(true);
-    const editor = wrapInlineAutocompleteEditor(harness.editor, () => skills);
+    const editor = wrapInlineAutocompleteEditor(harness.editor);
 
     editor.handleInput("c");
 
@@ -79,7 +86,7 @@ describe("wrapInlineAutocompleteEditor", () => {
 
   it("does not reopen suggestions after a non-text key", () => {
     const harness = createEditor("Use /code-");
-    const editor = wrapInlineAutocompleteEditor(harness.editor, () => skills);
+    const editor = wrapInlineAutocompleteEditor(harness.editor);
 
     editor.handleInput("\u001b");
 

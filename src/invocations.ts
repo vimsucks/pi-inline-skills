@@ -1,12 +1,10 @@
-import type { SkillInfo } from "./skills.js";
-
 export interface SkillInvocation {
   name: string;
   index: number;
   length: number;
 }
 
-const INLINE_SKILL_PATTERN = /(^|[^\w/.:~-])\/([a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?)(?=$|[^a-z0-9-])/g;
+const INLINE_SKILL_PATTERN = /([ \t])\/([a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?)(?=$|[^a-z0-9-])/g;
 const EXPANDED_SKILL_PATTERN = /<skill\s+name="([^"]+)"(?:\s|>)/g;
 
 export function findInlineSkillInvocations(text: string, knownSkillNames: ReadonlySet<string>): SkillInvocation[] {
@@ -18,12 +16,10 @@ export function findInlineSkillInvocations(text: string, knownSkillNames: Readon
     const name = match[2];
     const index = (match.index ?? 0) + prefix.length;
 
-    // Position zero belongs to Pi's native slash-command dispatcher.
-    if (index === 0) continue;
+    // Leading commands, including indented commands, belong to Pi.
+    if (!hasInlinePrefix(text, index)) continue;
     // pi-skillful owns /skill:name; this extension only owns /name.
     if (text.startsWith("/skill:", index)) continue;
-    // Allow users to escape a mention as \/name.
-    if (index > 0 && text[index - 1] === "\\") continue;
     if (!knownSkillNames.has(name)) continue;
 
     result.push({ name, index, length: name.length + 1 });
@@ -49,26 +45,25 @@ export interface InlineCompletion {
   markerStart: number;
 }
 
-export function findInlineSkillCompletion(
-  beforeCursor: string,
-  skills: readonly Pick<SkillInfo, "name">[],
-): InlineCompletion | undefined {
-  const match = beforeCursor.match(/(^|[^\w/.:~-])\/([a-z0-9-]*)$/);
+export function findInlineSkillCompletion(beforeCursor: string): InlineCompletion | undefined {
+  const match = beforeCursor.match(/([ \t])\/([a-z0-9-]*)$/);
   if (!match) return undefined;
 
   const fragment = match[2] ?? "";
   const markerStart = beforeCursor.length - fragment.length - 1;
 
-  if (markerStart === 0) return undefined;
-  if (markerStart > 0 && beforeCursor[markerStart - 1] === "\\") return undefined;
-  if (beforeCursor.startsWith("/skill:", markerStart)) return undefined;
-  if (!skills.some((skill) => skill.name.startsWith(fragment))) return undefined;
+  if (!hasInlinePrefix(beforeCursor, markerStart)) return undefined;
 
   return {
     fragment,
     prefix: `/${fragment}`,
     markerStart,
   };
+}
+
+function hasInlinePrefix(text: string, markerStart: number): boolean {
+  const lineStart = text.lastIndexOf("\n", markerStart - 1) + 1;
+  return text.slice(lineStart, markerStart).trim().length > 0;
 }
 
 function deduplicateInvocations(invocations: SkillInvocation[]): SkillInvocation[] {

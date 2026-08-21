@@ -52,13 +52,13 @@ Invoke multiple skills in one request:
 Use /code-review and /semgrep to inspect this change.
 ```
 
-Start typing a known skill name in the middle of a prompt to open completion:
+Inline skill mentions must be preceded by a space or tab. Start typing a known skill name to open completion:
 
 ```text
 Review this with /code-r
 ```
 
-Selecting the suggestion inserts `/code-review`.
+Selecting the suggestion inserts `/code-review `, including a trailing space. Once an inline skill token starts, its completion list contains only matching skills and never falls back to file suggestions.
 
 Pi 0.84.2 does not expose inline `/` as a custom autocomplete trigger. The extension therefore wraps the active editor component and requests the registered provider when an inline skill token is typed. Existing custom editor factories registered before this extension are preserved; editors without Pi's autocomplete request capability still retain manual Tab completion.
 
@@ -71,9 +71,10 @@ The leading slash-command position is reserved for Pi and other command provider
 | `/skill:code-review check this change` | Pi's native skill command |
 | `Use /code-review for this change` | `pi-inline-skills` |
 | `/some-command also use /semgrep` | Command provider for the leading token; this extension for `semgrep` |
+| `Explain/code-review` | Plain text; missing whitespace before `/` |
 | `Use /skill:code-review` | `pi-skillful` |
 
-This extension only recognizes `/<known-skill-name>` outside position zero. Standard Pi registers skills as `/skill:name`; a direct leading alias such as `/code-review` works only when another installed command provider supplies it. The extension deliberately ignores `/skill:name`, unknown names, escaped mentions such as `\/code-review`, URLs, and path-like tokens.
+This extension only recognizes whitespace-delimited `/<known-skill-name>` mentions after non-whitespace text on the same line. Standard Pi registers skills as `/skill:name`; a direct leading alias such as `/code-review` works only when another installed command provider supplies it. The extension deliberately ignores `/skill:name`, unknown names, escaped mentions such as `\/code-review`, URLs, and path-like tokens.
 
 ## How it works
 

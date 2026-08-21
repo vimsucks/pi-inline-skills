@@ -1,8 +1,6 @@
 import { CustomEditor, type ExtensionUIContext } from "@earendil-works/pi-coding-agent";
 import type { EditorComponent } from "@earendil-works/pi-tui";
 import { findInlineSkillCompletion } from "./invocations.js";
-import type { SkillInfo } from "./skills.js";
-
 export type InlineEditorFactory = NonNullable<Parameters<ExtensionUIContext["setEditorComponent"]>[0]>;
 
 type InlineAutocompleteEditor = EditorComponent & {
@@ -20,19 +18,15 @@ export function isInlineAutocompleteEditorFactory(factory: InlineEditorFactory |
 
 export function createInlineAutocompleteEditorFactory(
   current: InlineEditorFactory | undefined,
-  getSkills: () => readonly Pick<SkillInfo, "name">[],
 ): InlineEditorFactory {
   const base = current ?? ((tui, theme, keybindings) => new CustomEditor(tui, theme, keybindings));
   const factory: InlineEditorFactory = (tui, theme, keybindings) =>
-    wrapInlineAutocompleteEditor(base(tui, theme, keybindings), getSkills);
+    wrapInlineAutocompleteEditor(base(tui, theme, keybindings));
   inlineEditorFactories.add(factory);
   return factory;
 }
 
-export function wrapInlineAutocompleteEditor(
-  editor: EditorComponent,
-  getSkills: () => readonly Pick<SkillInfo, "name">[],
-): EditorComponent {
+export function wrapInlineAutocompleteEditor(editor: EditorComponent): EditorComponent {
   const candidate = editor as InlineAutocompleteEditor;
   const handleInput = editor.handleInput.bind(editor);
 
@@ -52,7 +46,7 @@ export function wrapInlineAutocompleteEditor(
     const lines = candidate.getLines();
     const cursor = candidate.getCursor();
     const beforeCursor = (lines[cursor.line] ?? "").slice(0, cursor.col);
-    if (findInlineSkillCompletion(beforeCursor, getSkills())) {
+    if (findInlineSkillCompletion(beforeCursor)) {
       // Pi 0.84.2 filters "/" from custom triggerCharacters, so ask its editor
       // to run the already-registered provider when an inline token is present.
       candidate.tryTriggerAutocomplete();

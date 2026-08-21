@@ -7,7 +7,6 @@ import {
 } from "../src/invocations.js";
 
 const known = new Set(["code-review", "semgrep", "skill"]);
-const skills = Array.from(known, (name) => ({ name }));
 
 describe("findInlineSkillInvocations", () => {
   it("finds known skills in the middle of a prompt", () => {
@@ -17,8 +16,16 @@ describe("findInlineSkillInvocations", () => {
     );
   });
 
+  it("requires whitespace before an inline invocation", () => {
+    assert.deepEqual(findInlineSkillInvocations("\u4ecb\u7ecd\u4e00\u4e0b/code-review", known), []);
+    assert.deepEqual(findInlineSkillInvocations("\u4ecb\u7ecd\u4e00\u4e0b /code-review", known).map(({ name }) => name), [
+      "code-review",
+    ]);
+  });
+
   it("leaves the leading slash position to Pi", () => {
     assert.deepEqual(findInlineSkillInvocations("/code-review check this change", known), []);
+    assert.deepEqual(findInlineSkillInvocations("  /code-review check this change", known), []);
   });
 
   it("can still find a later skill after a native leading invocation", () => {
@@ -47,37 +54,39 @@ describe("findInlineSkillInvocations", () => {
 
 describe("findInlineSkillCompletion", () => {
   it("offers completion for an inline skill prefix", () => {
-    assert.deepEqual(findInlineSkillCompletion("Please use /code-r", skills), {
+    assert.deepEqual(findInlineSkillCompletion("Please use /code-r"), {
       fragment: "code-r",
       prefix: "/code-r",
       markerStart: 11,
     });
   });
 
-  it("supports a prefix immediately after CJK text", () => {
-    assert.equal(findInlineSkillCompletion("\u8bf7\u7528/code-", skills)?.prefix, "/code-");
+  it("requires whitespace before an inline completion", () => {
+    assert.equal(findInlineSkillCompletion("\u4ecb\u7ecd\u4e00\u4e0b/code-"), undefined);
+    assert.equal(findInlineSkillCompletion("\u4ecb\u7ecd\u4e00\u4e0b /code-")?.prefix, "/code-");
   });
 
   it("does not replace Pi's leading command completion", () => {
-    assert.equal(findInlineSkillCompletion("/code-r", skills), undefined);
+    assert.equal(findInlineSkillCompletion("/code-r"), undefined);
+    assert.equal(findInlineSkillCompletion("  /code-r"), undefined);
   });
 
-  it("falls through when no skill matches", () => {
-    assert.equal(findInlineSkillCompletion("Open /usr/loc", skills), undefined);
+  it("recognizes an inline token before skill filtering", () => {
+    assert.equal(findInlineSkillCompletion("Open /unknown")?.prefix, "/unknown");
   });
 
   it("ignores escaped prefixes", () => {
-    assert.equal(findInlineSkillCompletion(String.raw`Use \/code-`, skills), undefined);
+    assert.equal(findInlineSkillCompletion(String.raw`Use \/code-`), undefined);
   });
 
   it("ignores path-like and URL-like prefixes", () => {
     for (const input of ["Open ./code-", "Open ~/code-", "See http:/code-"]) {
-      assert.equal(findInlineSkillCompletion(input, skills), undefined);
+      assert.equal(findInlineSkillCompletion(input), undefined);
     }
   });
 
   it("offers all skills when the inline slash trigger is typed", () => {
-    assert.deepEqual(findInlineSkillCompletion("Use /", skills), {
+    assert.deepEqual(findInlineSkillCompletion("Use /"), {
       fragment: "",
       prefix: "/",
       markerStart: 4,
