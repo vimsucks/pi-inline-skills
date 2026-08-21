@@ -3,7 +3,8 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { AutocompleteProviderFactory, ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { AutocompleteProvider } from "@earendil-works/pi-tui";
 import piInlineSkills from "../extensions/index.js";
 import { CUSTOM_MESSAGE_TYPE } from "../src/context.js";
 import type { InvocationMessage } from "../src/message.js";
@@ -15,6 +16,16 @@ const sentMessages: InvocationMessage[] = [];
 const notifications: string[] = [];
 let skillPath = "";
 let directory = "";
+let autocompleteProvider: AutocompleteProvider | undefined;
+
+const baseAutocompleteProvider: AutocompleteProvider = {
+  async getSuggestions() {
+    return null;
+  },
+  applyCompletion(lines, cursorLine, cursorCol) {
+    return { lines, cursorLine, cursorCol };
+  },
+};
 
 const pi = {
   registerMessageRenderer() {},
@@ -49,6 +60,9 @@ const context = (entries: unknown[] = []) => ({
     buildContextEntries: () => entries,
   },
   ui: {
+    addAutocompleteProvider(factory: AutocompleteProviderFactory) {
+      autocompleteProvider = factory(baseAutocompleteProvider);
+    },
     notify(message: string) {
       notifications.push(message);
     },
@@ -67,6 +81,21 @@ after(async () => {
 });
 
 describe("extension event wiring", () => {
+  it("opens skill suggestions when the inline slash trigger is typed", async () => {
+    const sessionStart = handlers.get("session_start");
+    assert.ok(sessionStart);
+
+    await sessionStart({ reason: "startup" }, context());
+    assert.ok(autocompleteProvider);
+
+    const line = "\u4ecb\u7ecd\u4e00\u4e0b /";
+    const suggestions = await autocompleteProvider.getSuggestions([line], 0, line.length, {
+      signal: AbortSignal.timeout(1_000),
+    });
+
+    assert.deepEqual(suggestions?.items.map((item) => item.value), ["/code-review"]);
+  });
+
   it("preserves input and injects a full custom message before an idle run", async () => {
     const input = handlers.get("input");
     const beforeAgentStart = handlers.get("before_agent_start");

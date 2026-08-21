@@ -70,8 +70,12 @@ describe("findInlineSkillCompletion", () => {
     assert.equal(findInlineSkillCompletion(String.raw`Use \/code-`, skills), undefined);
   });
 
-  it("does not take over a bare inline slash", () => {
-    assert.equal(findInlineSkillCompletion("Use /", skills), undefined);
+  it("offers all skills when the inline slash trigger is typed", () => {
+    assert.deepEqual(findInlineSkillCompletion("Use /", skills), {
+      fragment: "",
+      prefix: "/",
+      markerStart: 4,
+    });
   });
 });
 

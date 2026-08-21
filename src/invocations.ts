@@ -59,7 +59,7 @@ export function findInlineSkillCompletion(
   const fragment = match[2] ?? "";
   const markerStart = beforeCursor.length - fragment.length - 1;
 
-  if (markerStart === 0 || fragment.length === 0) return undefined;
+  if (markerStart === 0) return undefined;
   if (markerStart > 0 && beforeCursor[markerStart - 1] === "\\") return undefined;
   if (beforeCursor.startsWith("/skill:", markerStart)) return undefined;
   if (!skills.some((skill) => skill.name.startsWith(fragment))) return undefined;
