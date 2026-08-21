@@ -7,6 +7,7 @@ import type { AutocompleteProviderFactory, ExtensionAPI } from "@earendil-works/
 import type { AutocompleteProvider } from "@earendil-works/pi-tui";
 import piInlineSkills from "../extensions/index.js";
 import { CUSTOM_MESSAGE_TYPE } from "../src/context.js";
+import type { InlineEditorFactory } from "../src/editor.js";
 import type { InvocationMessage } from "../src/message.js";
 
 type Handler = (event: any, context: any) => Promise<any> | any;
@@ -17,6 +18,7 @@ const notifications: string[] = [];
 let skillPath = "";
 let directory = "";
 let autocompleteProvider: AutocompleteProvider | undefined;
+let editorFactory: InlineEditorFactory | undefined;
 
 const baseAutocompleteProvider: AutocompleteProvider = {
   async getSuggestions() {
@@ -60,6 +62,12 @@ const context = (entries: unknown[] = []) => ({
     buildContextEntries: () => entries,
   },
   ui: {
+    getEditorComponent() {
+      return editorFactory;
+    },
+    setEditorComponent(factory: InlineEditorFactory | undefined) {
+      editorFactory = factory;
+    },
     addAutocompleteProvider(factory: AutocompleteProviderFactory) {
       autocompleteProvider = factory(baseAutocompleteProvider);
     },
@@ -87,6 +95,7 @@ describe("extension event wiring", () => {
 
     await sessionStart({ reason: "startup" }, context());
     assert.ok(autocompleteProvider);
+    assert.ok(editorFactory);
 
     const line = "\u4ecb\u7ecd\u4e00\u4e0b /";
     const suggestions = await autocompleteProvider.getSuggestions([line], 0, line.length, {
@@ -94,6 +103,7 @@ describe("extension event wiring", () => {
     });
 
     assert.deepEqual(suggestions?.items.map((item) => item.value), ["/code-review"]);
+    assert.equal(autocompleteProvider.shouldTriggerFileCompletion?.([line], 0, line.length), true);
   });
 
   it("preserves input and injects a full custom message before an idle run", async () => {

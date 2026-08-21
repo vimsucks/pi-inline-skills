@@ -2,6 +2,7 @@ import type { AgentMessage } from "@earendil-works/pi-agent-core";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { CUSTOM_MESSAGE_TYPE, moveInvocationBeforeUser } from "../src/context.js";
+import { createInlineAutocompleteEditorFactory, isInlineAutocompleteEditorFactory } from "../src/editor.js";
 import {
   findExpandedSkillNames,
   findInlineSkillCompletion,
@@ -46,6 +47,13 @@ export default function piInlineSkills(pi: ExtensionAPI) {
     pendingSkillNames = [];
     if (ctx.mode !== "tui") return;
 
+    const currentEditorFactory = ctx.ui.getEditorComponent();
+    if (!isInlineAutocompleteEditorFactory(currentEditorFactory)) {
+      ctx.ui.setEditorComponent(
+        createInlineAutocompleteEditorFactory(currentEditorFactory, () => listSkills(pi.getCommands())),
+      );
+    }
+
     ctx.ui.addAutocompleteProvider((current) => ({
       triggerCharacters: ["/"],
 
@@ -76,9 +84,6 @@ export default function piInlineSkills(pi: ExtensionAPI) {
       },
 
       shouldTriggerFileCompletion(lines, line, col) {
-        const skills = listSkills(pi.getCommands());
-        const beforeCursor = (lines[line] ?? "").slice(0, col);
-        if (findInlineSkillCompletion(beforeCursor, skills)) return false;
         return current.shouldTriggerFileCompletion?.(lines, line, col) ?? true;
       },
     }));

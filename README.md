@@ -60,6 +60,8 @@ Review this with /code-r
 
 Selecting the suggestion inserts `/code-review`.
 
+Pi 0.84.2 does not expose inline `/` as a custom autocomplete trigger. The extension therefore wraps the active editor component and requests the registered provider when an inline skill token is typed. Existing custom editor factories registered before this extension are preserved; editors without Pi's autocomplete request capability still retain manual Tab completion.
+
 ### Command ownership
 
 The leading slash-command position is reserved for Pi and other command providers. Inline positions belong to this extension.

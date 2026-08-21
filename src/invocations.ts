@@ -6,7 +6,7 @@ export interface SkillInvocation {
   length: number;
 }
 
-const INLINE_SKILL_PATTERN = /(^|[^\w/-])\/([a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?)(?=$|[^a-z0-9-])/g;
+const INLINE_SKILL_PATTERN = /(^|[^\w/.:~-])\/([a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?)(?=$|[^a-z0-9-])/g;
 const EXPANDED_SKILL_PATTERN = /<skill\s+name="([^"]+)"(?:\s|>)/g;
 
 export function findInlineSkillInvocations(text: string, knownSkillNames: ReadonlySet<string>): SkillInvocation[] {
@@ -53,7 +53,7 @@ export function findInlineSkillCompletion(
   beforeCursor: string,
   skills: readonly Pick<SkillInfo, "name">[],
 ): InlineCompletion | undefined {
-  const match = beforeCursor.match(/(^|[^\w/-])\/([a-z0-9-]*)$/);
+  const match = beforeCursor.match(/(^|[^\w/.:~-])\/([a-z0-9-]*)$/);
   if (!match) return undefined;
 
   const fragment = match[2] ?? "";

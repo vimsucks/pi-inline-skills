@@ -33,7 +33,7 @@ describe("findInlineSkillInvocations", () => {
   });
 
   it("ignores escaped, unknown, URL, and path-like markers", () => {
-    const text = String.raw`Use \/code-review, /unknown, https://example.com, and src/code-review`;
+    const text = String.raw`Use \/code-review, /unknown, https://example.com, src/code-review, ./code-review, ~/code-review, and http:/code-review`;
     assert.deepEqual(findInlineSkillInvocations(text, known), []);
   });
 
@@ -68,6 +68,12 @@ describe("findInlineSkillCompletion", () => {
 
   it("ignores escaped prefixes", () => {
     assert.equal(findInlineSkillCompletion(String.raw`Use \/code-`, skills), undefined);
+  });
+
+  it("ignores path-like and URL-like prefixes", () => {
+    for (const input of ["Open ./code-", "Open ~/code-", "See http:/code-"]) {
+      assert.equal(findInlineSkillCompletion(input, skills), undefined);
+    }
   });
 
   it("offers all skills when the inline slash trigger is typed", () => {
